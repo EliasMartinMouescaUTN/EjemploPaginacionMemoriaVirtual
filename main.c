@@ -1,9 +1,12 @@
 #include <unistd.h>
+#include <locale.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <inttypes.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -15,7 +18,8 @@ char* literal = "string literal";   // Read only (.rodata)
 int global;                         // Global no inicializada (.bss)
 
 int pageSizeExponent;
-int pageSize;
+long pages;
+long pageSize;
 
 bool hasPermission = false;
 
@@ -24,7 +28,14 @@ void printHumanSize(uint64_t bytes);
 uint64_t getFrame(void* vaddr);
 
 int main(int argc, char* argv[]) {
-//int main() {
+    setlocale(LC_ALL, "es_AR.UTF-8"); // use current locale
+
+    pages = sysconf(_SC_PHYS_PAGES);
+    if (pages == -1) {
+        printf("sysconf() retornó '%s'\n", strerror(errno));
+        return 1;
+    }
+
     pageSize = sysconf(_SC_PAGESIZE);
     if (pageSize == -1) {
         printf("sysconf() retornó '%s'\n", strerror(errno));
@@ -33,14 +44,43 @@ int main(int argc, char* argv[]) {
 
     pageSizeExponent = __builtin_ctz(pageSize);
 
-    printf("Tamaño de página: %d (2 ^ %d)\n\n", pageSize, pageSizeExponent);
+    //printf("Tamaño de página: %ld (2 ^ %d)\n\n", pageSize, pageSizeExponent);
+    printf("La memoria física está dividida en %'ld frames de %'ld bytes cada uno.\n\n", pages, pageSize);
 
     int variableStack;
     void* stackPointer = (void*) &variableStack;    // Stack
     void* heapPointer = malloc(sizeof(int));        // Heap
+    int fd = open("Makefile", O_RDONLY);
+    if (fd == -1) {
+        perror("open");
+        return 1;
+    }
+
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        perror("fstat");
+        close(fd);
+        return 1;
+    }
+
+    size_t size = st.st_size;
+    void *map = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (map == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        return 1;
+    }
+
+    close(fd);
+    volatile char c = *((char*) map);    // Leemos algo para que el SO cargue el archivo a memoria
+
+
 
     printPointer("Variable en el stack      ", stackPointer);
-    printPointer("Función de libc           ", (void*)printf);
+    puts("(...)");
+    printPointer("Archivo mapeado a memoria ", map);
+    printPointer("Librería compartida       ", (void*)printf);
+    puts("(...)");
     printPointer("Variable en la heap       ", heapPointer);
     printPointer("Global inicializada       ", (void*)constant);
     printPointer("Global no inicializada    ", (void*)&global);
@@ -48,13 +88,14 @@ int main(int argc, char* argv[]) {
     printPointer("Función del programa      ", (void*)printPointer);
 
     free(heapPointer);
+    munmap(map, size);
 
     if (!hasPermission)
-        puts("[El programa no obtuvo los permisos requeridos para mostrar los frames físicos.]");
+        puts("\n[El programa no obtuvo los permisos requeridos para mostrar los frames físicos.]");
 
     if (argc > 1)
-        if (strcmp(argv[1], "--wait") == 0) {
-            puts("\n\nEsperando... (los números de frame no se están actualizando)");
+        if (strcmp(argv[1], "--wait") == 0 || strcmp(argv[1], "-w") == 0) {
+            //puts("\n\nEsperando... (los números de frame no se están actualizando)");
             getchar();
         }
 
@@ -64,12 +105,14 @@ int main(int argc, char* argv[]) {
 void printPointer(const char* str, void* ptr) {
     uintptr_t addr = (uintptr_t)ptr;
     uintptr_t page = addr >> pageSizeExponent;
+    uintptr_t offset = addr & (pageSize - 1);  // bits inside the page
 
-    printf("%s:\t%p, página %" PRIuPTR, str, ptr, page);
+    printf("%s:\t%p (offset: 0x%lx),\tpágina %'" PRIuPTR, 
+           str, ptr, (unsigned long)offset, page);
 
     uint64_t pfn = getFrame(ptr);
     if (pfn) {
-        printf(" → frame %" PRIu64, pfn);
+        printf(" → frame %'" PRIu64, pfn);
         hasPermission = true;
     }
 
