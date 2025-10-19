@@ -28,7 +28,7 @@ void printHumanSize(uint64_t bytes);
 uint64_t getFrame(void* vaddr);
 
 int main(int argc, char* argv[]) {
-    setlocale(LC_ALL, "es_AR.UTF-8"); // use current locale
+    setlocale(LC_ALL, "es_AR.UTF-8");
 
     pages = sysconf(_SC_PHYS_PAGES);
     if (pages == -1) {
@@ -44,12 +44,10 @@ int main(int argc, char* argv[]) {
 
     pageSizeExponent = __builtin_ctz(pageSize);
 
-    //printf("Tamaño de página: %ld (2 ^ %d)\n\n", pageSize, pageSizeExponent);
-    printf("La memoria física está dividida en %'ld frames de %'ld bytes cada uno.\n\n", pages, pageSize);
+    printf("La memoria física está dividida en %'ld frames de %'ld (2^%d) bytes cada uno.\n\n", pages, pageSize, pageSizeExponent);
 
     int variableStack;
-    void* stackPointer = (void*) &variableStack;    // Stack
-    void* heapPointer = malloc(sizeof(int));        // Heap
+    void* heapAddress = malloc(sizeof(int));        // Heap
     int fd = open("Makefile", O_RDONLY);
     if (fd == -1) {
         perror("open");
@@ -76,22 +74,22 @@ int main(int argc, char* argv[]) {
 
 
 
-    printPointer("Variable en el stack      ", stackPointer);
+    printPointer("Variable en el stack      ", (void*) &variableStack);
     puts("(...)");
     printPointer("Archivo mapeado a memoria ", map);
-    printPointer("Librería compartida       ", (void*)printf);
+    printPointer("Función de shared library ", (void*)printf);
     puts("(...)");
-    printPointer("Variable en la heap       ", heapPointer);
+    printPointer("Variable en la heap       ", heapAddress);
     printPointer("Global inicializada       ", (void*)constant);
     printPointer("Global no inicializada    ", (void*)&global);
     printPointer("Cadena literal            ", (void*)literal);
     printPointer("Función del programa      ", (void*)printPointer);
 
-    free(heapPointer);
+    free(heapAddress);
     munmap(map, size);
 
     if (!hasPermission)
-        puts("\n[El programa no obtuvo los permisos requeridos para mostrar los frames físicos.]");
+        puts("\n[ El programa no obtuvo los permisos requeridos para mostrar los frames físicos. ]");
 
     if (argc > 1)
         if (strcmp(argv[1], "--wait") == 0 || strcmp(argv[1], "-w") == 0) {
@@ -103,20 +101,20 @@ int main(int argc, char* argv[]) {
 }
 
 void printPointer(const char* str, void* ptr) {
-    uintptr_t addr = (uintptr_t)ptr;
-    uintptr_t page = addr >> pageSizeExponent;
-    uintptr_t offset = addr & (pageSize - 1);  // bits inside the page
+    uintptr_t addr   = (uintptr_t) ptr;
+    uintptr_t offset = addr & (pageSize - 1);
+    uintptr_t base   = addr - offset;  // start of the page
+    uintptr_t page   = addr >> pageSizeExponent;
 
-    printf("%s:\t%p (offset: 0x%lx),\tpágina %'" PRIuPTR, 
-           str, ptr, (unsigned long)offset, page);
+    printf("%s:\t%p (%p + 0x%lx)\t\tpágina %'" PRIuPTR, 
+           str, ptr, (void*) base, (unsigned long) offset, page);
 
     uint64_t pfn = getFrame(ptr);
     if (pfn) {
-        printf(" → frame %'" PRIu64, pfn);
+        printf("  ->  frame %'" PRIu64, pfn);
         hasPermission = true;
     }
-
-    printf("\n");
+    puts("");
 }
 
 void printHumanSize(uint64_t bytes) {
