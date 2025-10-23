@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
     printPointer("Variable en la heap                   ", heapAddress);
     printPointer("Global inicializada                   ", (void*) &globalInicializada);
     printPointer("Global no inicializada                ", (void*) &globalNoInicializada);
-    printPointer("String literal (\"string literal\")   ", (void*) literal);
+    printPointer("String literal (\"string literal\")     ", (void*) literal);
     printPointer("Función del programa (printPointer)   ", (void*) printPointer);
 
     free(heapAddress);
