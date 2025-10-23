@@ -5,21 +5,21 @@ Un programa simple que inicializa un par de variables y muestra las direcciones 
 ```sh
 $ sudo ./32
 
-PID: 37559
+PID: 39381
 
 La memoria física está dividida en 4.074.737 frames de 4.096 (2^12) bytes cada uno.
 
-Variable en el stack                  :	0xffba5380 (0xffba5000 + 0x380)		página 1.047.461  ->  frame 3.573.838 (0x36884e)
+Variable en el stack                  :	0xffb74cb0 (0xffb74000 + 0xcb0)		página 1.047.412  ->  frame 3.976.206 (0x3cac0e)
 (...)
-'Makefile' mapeado a memoria (read)   :	0xf7ed0000 (0xf7ed0000 + 0x0)		página 1.015.504  ->  frame 3.950.442 (0x3c476a)
-'Makefile' mapeado a memoria (r+w)    :	0xf7ecf000 (0xf7ecf000 + 0x0)		página 1.015.503  ->  frame 3.950.442 (0x3c476a)
-Función de librería compartida        :	0xf7cc3b80 (0xf7cc3000 + 0xb80)		página 1.014.979  ->  frame 1.690.976 (0x19cd60)
+'Makefile' mapeado a memoria (read)   :	0xf7f5a000 (0xf7f5a000 + 0x0)		página 1.015.642  ->  frame 3.950.442 (0x3c476a)
+'Makefile' mapeado a memoria (r+w)    :	0xf7f59000 (0xf7f59000 + 0x0)		página 1.015.641  ->  frame 3.950.442 (0x3c476a)
+Función de librería compartida        :	0xf7d4db80 (0xf7d4d000 + 0xb80)		página 1.015.117  ->  frame 1.690.976 (0x19cd60)
 (...)
-Variable en la heap                   :	0x57d7def0 (0x57d7d000 + 0xef0)		página 359.805  ->  frame 2.030.913 (0x1efd41)
-Global inicializada                   :	0x56639060 (0x56639000 + 0x60)		página 353.849  ->  frame 2.549.306 (0x26e63a)
-Global no inicializada                :	0x5663907c (0x56639000 + 0x7c)		página 353.849  ->  frame 2.549.306 (0x26e63a)
-String literal ("string literal")   :	0x566370c6 (0x56637000 + 0xc6)		página 353.847  ->  frame 2.663.070 (0x28a29e)
-Función del programa (printPointer)   :	0x566369b0 (0x56636000 + 0x9b0)		página 353.846  ->  frame 3.184.429 (0x30972d)
+Variable en la heap                   :	0x56a17ef0 (0x56a17000 + 0xef0)		página 354.839  ->  frame 3.742.707 (0x391bf3)
+Global inicializada                   :	0x565b0060 (0x565b0000 + 0x60)		página 353.712  ->  frame 1.719.627 (0x1a3d4b)
+Global no inicializada                :	0x565b007c (0x565b0000 + 0x7c)		página 353.712  ->  frame 1.719.627 (0x1a3d4b)
+String literal ("string literal")     :	0x565ae0c6 (0x565ae000 + 0xc6)		página 353.710  ->  frame 2.453.215 (0x256edf)
+Función del programa (printPointer)   :	0x565ad9b0 (0x565ad000 + 0x9b0)		página 353.709  ->  frame 3.653.556 (0x37bfb4)
 ```
 
 ## Compilar
