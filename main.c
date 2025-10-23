@@ -13,10 +13,14 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define PAGEMAP_ENTRY_SIZE 8
-#define PAGE_PRESENT (1ULL<<63)
-#define PAGE_SWAPPED (1ULL<<62)
-#define PFN_MASK ((1ULL << 55) - 1)
+#define PAGEMAP_ENTRY_SIZE      8
+#define PAGE_PRESENT            (1ULL<<63)
+#define PAGE_SWAPPED            (1ULL<<62)
+#define PFN_MASK                ((1ULL << 55) - 1)
+
+#define ERROR                   ((uint64_t)-1)
+#define PAGE_NOT_PRESENT        ((uint64_t)-2)
+#define PAGE_IN_SWAP            ((uint64_t)-3)
 
 int globalInicializada = 73;        // Global inicializada (.data)
 int globalNoInicializada;           // Global no inicializada (.bss)
@@ -136,7 +140,14 @@ void printPointer(const char* str, void* ptr) {
            str, ptr, (void*) base, (unsigned long) offset, page);
 
     uint64_t pfn = getFrame(ptr);
-    if (pfn) {
+    if (pfn == 0);
+    else if (pfn == ERROR)
+        printf(" [Error]");
+    else if (pfn == PAGE_NOT_PRESENT)
+        printf(" [Página no presente]");
+    else if (pfn == PAGE_IN_SWAP)
+        printf(" [Página en swap]");
+    else {
         printf("  ->  frame %'" PRIu64 " (0x%" PRIx64 ")", pfn, pfn);
         hasPermission = true;
     }
@@ -162,7 +173,7 @@ uint64_t getFrame(void* vaddr) {
     FILE *f = fopen(path, "rb");
     if (!f) {
         perror("fopen");
-        return 0;
+        return ERROR;
     }
 
     uintptr_t virt_addr = (uintptr_t)vaddr;
@@ -170,14 +181,14 @@ uint64_t getFrame(void* vaddr) {
     if (fseeko(f, file_offset, SEEK_SET) != 0) {
         perror("fseeko");
         fclose(f);
-        return 0;
+        return ERROR;
     }
 
     unsigned char buf[PAGEMAP_ENTRY_SIZE];
     if (fread(buf, 1, PAGEMAP_ENTRY_SIZE, f) != PAGEMAP_ENTRY_SIZE) {
         perror("fread");
         fclose(f);
-        return 0;
+        return ERROR;
     }
     fclose(f);
 
@@ -185,12 +196,11 @@ uint64_t getFrame(void* vaddr) {
     for (size_t i = 0; i < sizeof(uint64_t); i++)
         entry |= ((uint64_t)buf[i]) << (8 * i);
 
-    if (!(entry & PAGE_PRESENT))
-        return 0;
-
     if (entry & PAGE_SWAPPED)
-        return 0;
+        return PAGE_IN_SWAP;
+
+    if (!(entry & PAGE_PRESENT))
+        return PAGE_NOT_PRESENT;
 
     return entry & PFN_MASK;
 }
-

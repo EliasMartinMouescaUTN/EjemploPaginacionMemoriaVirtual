@@ -1,4 +1,4 @@
-# Ejemplo paginación memoria virtual
+# Ejemplo paginación con memoria virtual
 Un programa simple que inicializa un par de variables y muestra las direcciones virtuales en las que se encuentran, la página correspondiente a esa dirección y el frame correspondiente a esa página.
 
 ## Output esperado
@@ -23,16 +23,42 @@ Función del programa (printPointer)   :	0x565ad9b0 (0x565ad000 + 0x9b0)		págin
 ```
 
 ## Compilar
-Solo compila en linux. Pero debería andar en cualquier distro moderna. Ejecutar `make` compila dos ejecutables: uno que se llama '32' y otro que se llama '64'. Son el mismo ejecutable, compilado para 32 y para 64 bits. Cualquiera de los dos anda en una arquitectura de 64 bits.
+Solo compila en linux. Pero debería andar en cualquier distro moderna. Ejecutar `make` compila dos ejecutables: uno que se llama '32' y otro que se llama '64'. Se pueden compilar por separado con `make 32` y `make 64`. Son el mismo ejecutable, compilado para 32 y para 64 bits. Cualquiera de los dos anda en una arquitectura de 64 bits.
 
 ## Ejecutar
 La gracia sería ejecutarlo con `sudo`, para poder ver los marcos asignados. Sin los permisos necesarios, solo va a imprimir el número de página. 
 
 El programa tiene una única flag: --wait o -w, que hace que el programa quede esperando una vez que terminó de imprimir todo. Esto es para probar otras cosas sin que el programa muera inmediatamente.
 
+## Caveats
+### 32 bits
+Si no están disponibles las librerías de desarrollo para 32 bits en el sistema, el compilador va a dar error cuando se trate de compilar la versión de 32 bits. Igual, en una arquitectura de 64 bits, debería poder compilarse tranquilamente la versión de 64 bits con `make 64`.
+
+### Locale
+El programa setea el locale (la configuración regional) `es_AR.UTF-8`, está bueno porque pone los números con puntos y se pueden leer más fácil. Pero es totalmente opcional. 
+
+Para instalar el locale: 
+```sh
+sudo locale-gen es_AR.UTF-8 
+sudo update-locale LANG=es_AR.UTF-8
+```
+
+### kptr_restrict
+Probando el programa en diferentes distros encontré que hay un parámetro que limita las direcciones que podemos leer con [/proc/{id}/pagemap](https://www.kernel.org/doc/Documentation/vm/pagemap.txt). [/proc/sys/kernel/kptr_restrict](https://docs.kernel.org/admin-guide/sysctl/kernel.html#kptr-restrict) setea restricciones para /proc y otras interfaces.
+
 ## Conclusiones
 Cosas que noté jugando con el programa
 
-- Si ejecutamos varias veces el archivo; el código, la cadena literal (constante), la librería compartida y el archivo siempre terminan quedando en el mismo frame. Entiendo que es una optimización de Linux, porque justamente son todas cosas que no varían.
-- La versión de 64 bits en general no comparte ningún frame con la versión de 32 bits. Salvo por los archivos mapeados a memoria.
-- Un mismo archivo mapeado a memoria como escritura y como lectoescritura termina en el mismo frame.
+- Si ejecutamos varias veces el programa; el código, la cadena literal, la librería compartida y el archivo mapeado a memoria siempre terminan quedando en el mismo frame. Lo de la librería compartida tiene todo el sentido, lo otro entiendo que es una optimización de Linux, porque son todos segmentos de memoria estáticos.
+- La versión de 64 bits en general no comparte ningún frame con la versión de 32 bits. Salvo por el archivo mapeado a memoria.
+- Un mismo archivo mapeado a memoria como escritura y como lecto-escritura termina en el mismo frame.
+- El offset dentro de una página para una misma variable siempre es el mismo a menos que sea una variable de stack. Pero esos mismos offsets cambian según la distro.
+- No sé por qué pasa esto pero probé el programa en xfce y hay veces que la página que contiene la librería compartida no está presente pero en Ubuntu y Arch siempre está presente.
+
+## How?
+El tamaño de página se obtiene con [sysconf\(_SC_PAGESIZE\)](https://man7.org/linux/man-pages/man3/sysconf.3.html).
+
+La página dada una dirección virtual se consigue dividiendo la dirección por el tamaño de página.
+
+El frame que corresponde a cada página se obtiene con el archivo [/proc/{id}/pagemap](https://www.kernel.org/doc/Documentation/vm/pagemap.txt). Es una interfaz que expone linux y permite a procesos en modo usuario leer las tablas de páginas.
+
