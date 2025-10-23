@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2
+CFLAGS = -Wall -Wextra -O2 -Wno-unused-variable -Wno-unused-but-set-variable
 
 # Default targets
 all: 32 64
@@ -11,5 +11,5 @@ all: 32 64
 	$(CC) $(CFLAGS) -m64 -o $@ $<
 
 clean:
-	rm -f pages_32 pages_64
+	rm -f 32 64
 
